@@ -1,4 +1,96 @@
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// ⚠️ 중요: 이곳에 당신의 Firebase 프로젝트 설정을 입력해야 채팅이 작동합니다!
+// Firebase 콘솔 -> 프로젝트 설정 -> 내 앱 -> SDK 설정 및 구성에서 복사하세요.
+const firebaseConfig = {
+    apiKey: "AIzaSyDr_uKuTvWZmzZ6OgzOzaWAyuXXqB8JUoc",
+    authDomain: "dongukwebtest.firebaseapp.com",
+    databaseURL: "https://dongukwebtest-default-rtdb.firebaseio.com",
+    projectId: "dongukwebtest",
+    storageBucket: "dongukwebtest.firebasestorage.app",
+    messagingSenderId: "838549957143",
+    appId: "1:838549957143:web:0d533db3ef9597ba5d0a52",
+    measurementId: "G-TQNJ0PC2FF"
+};
+
+class ChatManager {
+    constructor() {
+        this.messagesElement = document.getElementById('chat-messages');
+        this.formElement = document.getElementById('chat-form');
+        this.inputElement = document.getElementById('chat-input');
+        
+        // Simple user ID for this session to distinguish "my" messages
+        this.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        
+        this.init();
+    }
+
+    init() {
+        try {
+            const app = initializeApp(firebaseConfig);
+            this.db = getDatabase(app);
+            this.messagesRef = ref(this.db, 'messages');
+            
+            this.formElement.addEventListener('submit', (e) => this.sendMessage(e));
+            this.listenMessages();
+        } catch (error) {
+            console.error("Firebase init error:", error);
+            this.appendSystemMessage("채팅 연결 실패. 콘솔에서 Realtime Database를 생성했는지 확인해주세요.");
+        }
+    }
+
+    sendMessage(e) {
+        e.preventDefault();
+        const text = this.inputElement.value.trim();
+        if (!text) return;
+
+        push(this.messagesRef, {
+            text: text,
+            userId: this.userId,
+            timestamp: serverTimestamp()
+        });
+
+        this.inputElement.value = '';
+        this.scrollToBottom();
+    }
+
+    listenMessages() {
+        onChildAdded(this.messagesRef, (snapshot) => {
+            const data = snapshot.val();
+            this.appendMessage(data);
+        });
+    }
+
+    appendMessage(data) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        
+        if (data.userId === this.userId) {
+            messageDiv.classList.add('mine');
+        } else {
+            messageDiv.classList.add('others');
+        }
+        
+        messageDiv.textContent = data.text;
+        this.messagesElement.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    appendSystemMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'system');
+        messageDiv.textContent = text;
+        this.messagesElement.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    scrollToBottom() {
+        this.messagesElement.scrollTop = this.messagesElement.scrollHeight;
+    }
+}
+
 class SudokuGenerator {
     constructor() {
         this.grid = Array.from({ length: 9 }, () => Array(9).fill(0));
@@ -497,3 +589,5 @@ class SudokuUI {
 
 // Initialize the game
 new SudokuUI();
+// Initialize Chat
+new ChatManager();
