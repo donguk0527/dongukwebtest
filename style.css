@@ -27,27 +27,145 @@ body {
     color: var(--text-color);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Aligns items to top */
     min-height: 100vh;
     min-height: 100dvh;
 }
 
-.app-container {
-    width: 100%;
-    max-width: 500px; /* Restored standard width */
+/* Layout Container for Game and Chat */
+.main-layout {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
     padding: 20px;
+    width: 100%;
+    max-width: 1000px;
+    height: 100dvh; /* Constrain height for desktop to avoid double scrollbars */
+}
+
+/* Game Container */
+.app-container {
+    flex: 1; /* Take available space */
+    max-width: 500px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 15px;
+    height: 100%;
+    justify-content: center; /* Center game vertically */
 }
 
+/* Chat Container */
+.chat-container {
+    width: 350px;
+    height: calc(100% - 40px); /* Fill height minus padding */
+    max-height: 800px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    margin-top: auto;
+    margin-bottom: auto; /* Vertically center chat */
+}
+
+/* Chat UI Elements */
+.chat-header {
+    padding: 15px;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.online-status {
+    font-size: 0.8rem;
+    color: #2ecc71;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: #f8f9fa;
+}
+
+.message {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: white;
+    font-size: 0.9rem;
+    max-width: 85%;
+    box-shadow: var(--shadow-sm);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.message.system {
+    align-self: center;
+    background-color: rgba(0,0,0,0.05);
+    color: #7f8c8d;
+    font-size: 0.8rem;
+    box-shadow: none;
+}
+
+.message.mine {
+    align-self: flex-end;
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.message.others {
+    align-self: flex-start;
+    background-color: white;
+    color: var(--text-color);
+}
+
+.chat-input-area {
+    padding: 10px;
+    background-color: white;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 8px;
+}
+
+#chat-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+#chat-input:focus {
+    border-color: var(--primary-color);
+}
+
+/* Game Header & Controls */
 header {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .header-top {
@@ -246,7 +364,27 @@ footer {
 }
 
 /* Responsive adjustments */
-@media (max-width: 400px) {
+@media (max-width: 850px) {
+    .main-layout {
+        flex-direction: column;
+        align-items: center;
+        height: auto;
+        padding: 10px;
+    }
+
+    .app-container {
+        width: 100%;
+        max-width: min(500px, calc(100dvh - 100px));
+        height: auto;
+    }
+
+    .chat-container {
+        width: 100%;
+        max-width: 500px;
+        height: 300px; /* Fixed height for chat on mobile */
+        margin-top: 20px;
+    }
+    
     .cell {
         font-size: 1rem;
     }
