@@ -29,17 +29,17 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    min-height: 100dvh; /* Mobile browser friendly */
+    min-height: 100dvh;
 }
 
 .app-container {
     width: 100%;
-    max-width: min(500px, calc(100dvh - 340px)); /* More space for UI elements */
-    padding: 10px 20px;
+    max-width: 500px; /* Restored standard width */
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px; /* Reduced gap */
+    gap: 15px;
 }
 
 header {
@@ -47,7 +47,7 @@ header {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
 }
 
 .header-top {
@@ -69,14 +69,51 @@ header {
     color: var(--error-color);
 }
 
-/* ... existing styles ... */
-
-.btn {
-    padding: 6px 12px; /* Slightly smaller buttons */
-    /* ... */
+h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-color);
 }
 
-/* ... */
+.controls {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: white;
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-family);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn.primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
 
 main {
     width: 100%;
@@ -86,7 +123,83 @@ main {
 }
 
 /* Game Board */
-/* ... */
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background-color: var(--board-bg);
+    border: 2px solid var(--border-thick);
+    border-radius: 4px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.1s;
+    position: relative;
+}
+
+/* Thicker borders for 3x3 grids */
+.cell:nth-child(3n) {
+    border-right: 2px solid var(--border-thick);
+}
+.cell:nth-child(9n) {
+    border-right: none;
+}
+.cell:nth-child(n+19):nth-child(-n+27),
+.cell:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 2px solid var(--border-thick);
+}
+.cell:nth-child(9n) {
+    border-right: none;
+}
+.cell:nth-child(n+73) {
+    border-bottom: none;
+}
+
+/* Cell States */
+.cell.selected {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.cell.highlighted {
+    background-color: var(--highlight-color);
+}
+
+.cell.same-number {
+    background-color: var(--selection-color);
+    font-weight: 700;
+}
+
+.cell.fixed {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.cell.editable {
+    color: var(--primary-color);
+}
+
+.cell.error {
+    background-color: var(--error-bg);
+    color: var(--error-color);
+}
+
+.cell.selected.error {
+    background-color: var(--error-color);
+    color: white;
+}
 
 /* Numpad */
 .numpad {
@@ -94,13 +207,13 @@ main {
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
     width: 100%;
-    margin-top: 0; /* Handled by main gap */
+    margin-top: 0;
 }
 
 .num-btn {
-    padding: 8px 0; /* Slimmer buttons */
-    /* ... */
-}
+    padding: 12px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
     background-color: white;
     border: 1px solid var(--border-color);
     border-radius: 8px;
