@@ -128,11 +128,19 @@ class SudokuUI {
         this.newGameBtn = document.getElementById('new-game-btn');
         this.difficultySelect = document.getElementById('difficulty-select');
         this.statusMessage = document.getElementById('status-message');
+        this.timerElement = document.getElementById('timer');
+        this.mistakesElement = document.getElementById('mistakes');
         
         this.selectedCell = null; // {row, col, element}
         this.solution = [];
         this.currentBoard = [];
         this.initialBoard = [];
+        
+        this.mistakes = 0;
+        this.maxMistakes = 3;
+        this.timerSeconds = 0;
+        this.timerInterval = null;
+        this.isGameOver = false;
 
         this.init();
     }
@@ -155,11 +163,127 @@ class SudokuUI {
         this.initialBoard = puzzle.map(row => [...row]);
         this.currentBoard = puzzle.map(row => [...row]);
         
+        this.mistakes = 0;
+        this.isGameOver = false;
+        this.boardElement.style.opacity = '1';
+        this.boardElement.style.pointerEvents = 'auto';
+        this.updateMistakesDisplay();
+        this.startTimer();
+        
         this.renderBoard();
         this.selectCell(null);
         this.statusMessage.textContent = '게임 시작! 빈 칸을 채워보세요.';
         this.statusMessage.style.color = '#7f8c8d';
     }
+
+    startTimer() {
+        this.stopTimer();
+        this.timerSeconds = 0;
+        this.updateTimerDisplay();
+        this.timerInterval = setInterval(() => {
+            this.timerSeconds++;
+            this.updateTimerDisplay();
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    updateTimerDisplay() {
+        const minutes = Math.floor(this.timerSeconds / 60);
+        const seconds = this.timerSeconds % 60;
+        this.timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    updateMistakesDisplay() {
+        this.mistakesElement.textContent = `오류: ${this.mistakes}/${this.maxMistakes}`;
+    }
+
+    renderBoard() {
+        this.boardElement.innerHTML = '';
+        // ... (rest of renderBoard implementation remains implicitly same, this replace handles the logic flow)
+        for (let i = 0; i < 9; i++) {
+            for (let j = 0; j < 9; j++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+                
+                const value = this.currentBoard[i][j];
+                if (value !== 0) {
+                    cell.textContent = value;
+                    if (this.initialBoard[i][j] !== 0) {
+                        cell.classList.add('fixed');
+                    } else {
+                        cell.classList.add('editable');
+                    }
+                }
+
+                cell.addEventListener('click', () => this.selectCell(cell, i, j));
+                this.boardElement.appendChild(cell);
+            }
+        }
+    }
+
+    // ... (selectCell remains same)
+
+    handleNumpad(e) {
+        if (this.isGameOver) return;
+        if (!e.target.classList.contains('num-btn')) return;
+        // ... (rest of handleNumpad logic)
+        if (!this.selectedCell) {
+            this.statusMessage.textContent = '먼저 셀을 선택해주세요.';
+            this.statusMessage.style.color = '#e74c3c';
+            return;
+        }
+
+        const { row, col, element } = this.selectedCell;
+
+        // Cannot edit fixed cells
+        if (this.initialBoard[row][col] !== 0) {
+            this.shakeElement(element);
+            return;
+        }
+
+        const action = e.target.dataset.action;
+        const num = action === 'erase' ? 0 : parseInt(e.target.dataset.num);
+
+        this.updateCell(row, col, num);
+    }
+
+    handleKeydown(e) {
+        if (this.isGameOver) return;
+        if (!this.selectedCell) return;
+        // ... (rest of handleKeydown logic)
+        const key = e.key;
+        const { row, col, element } = this.selectedCell;
+
+        // Navigation
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+            e.preventDefault();
+            this.moveSelection(key);
+            return;
+        }
+
+        // Editing
+        if (this.initialBoard[row][col] !== 0) return;
+
+        if (key >= '1' && key <= '9') {
+            this.updateCell(row, col, parseInt(key));
+        } else if (key === 'Backspace' || key === 'Delete') {
+            this.updateCell(row, col, 0);
+        }
+    }
+    
+    // ... (moveSelection remains same)
+    
+    // Explicitly including renderBoard and selectCell etc is messy in replace block without full file.
+    // I will replace methods individually to be safe and clean.
+
 
     renderBoard() {
         this.boardElement.innerHTML = '';
@@ -225,6 +349,7 @@ class SudokuUI {
     }
 
     handleNumpad(e) {
+        if (this.isGameOver) return;
         if (!e.target.classList.contains('num-btn')) return;
         if (!this.selectedCell) {
             this.statusMessage.textContent = '먼저 셀을 선택해주세요.';
@@ -247,6 +372,7 @@ class SudokuUI {
     }
 
     handleKeydown(e) {
+        if (this.isGameOver) return;
         if (!this.selectedCell) return;
 
         const key = e.key;
@@ -293,6 +419,12 @@ class SudokuUI {
             // Check for errors
             if (num !== this.solution[row][col]) {
                 cell.classList.add('error');
+                this.mistakes++;
+                this.updateMistakesDisplay();
+                
+                if (this.mistakes >= this.maxMistakes) {
+                    this.gameOver();
+                }
             } else {
                 // Check win condition
                 this.checkWin();
@@ -301,6 +433,18 @@ class SudokuUI {
         
         // Re-apply highlighting to show same numbers
         this.selectCell(cell, row, col);
+    }
+
+    gameOver() {
+        this.isGameOver = true;
+        this.stopTimer();
+        this.statusMessage.textContent = '게임 오버! 3번의 실수를 하셨습니다.';
+        this.statusMessage.style.color = '#e74c3c';
+        this.statusMessage.style.fontWeight = 'bold';
+        
+        // Disable board interaction visually
+        this.boardElement.style.opacity = '0.7';
+        this.boardElement.style.pointerEvents = 'none';
     }
 
     shakeElement(element) {
@@ -342,7 +486,8 @@ class SudokuUI {
         }
 
         if (isFull && isCorrect) {
-            this.statusMessage.textContent = '축하합니다! 퍼즐을 완성했습니다! 🎉';
+            this.stopTimer();
+            this.statusMessage.textContent = `축하합니다! ${this.timerElement.textContent} 만에 퍼즐을 완성했습니다! 🎉`;
             this.statusMessage.style.color = '#27ae60';
             this.statusMessage.style.fontWeight = 'bold';
             // Confetti effect could go here

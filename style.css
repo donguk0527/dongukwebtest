@@ -45,9 +45,28 @@ body {
 header {
     width: 100%;
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.header-top {
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5px; /* Reduced margin */
+    width: 100%;
+}
+
+.game-stats {
+    display: flex;
+    gap: 15px;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+
+#mistakes {
+    color: var(--error-color);
 }
 
 /* ... existing styles ... */
