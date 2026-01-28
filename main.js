@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, orderByChild, limitToFirst, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // ⚠️ 중요: 이곳에 당신의 Firebase 프로젝트 설정을 입력해야 채팅이 작동합니다!
 const firebaseConfig = {
@@ -13,32 +14,160 @@ const firebaseConfig = {
     measurementId: "G-TQNJ0PC2FF"
 };
 
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+class AuthManager {
+    constructor() {
+        this.loginBtn = document.getElementById('login-btn');
+        this.logoutBtn = document.getElementById('logout-btn');
+        this.userDisplay = document.getElementById('user-display');
+        
+        this.modal = document.getElementById('auth-modal');
+        this.overlay = document.getElementById('modal-overlay');
+        this.closeBtn = document.getElementById('auth-close-btn');
+        
+        this.form = document.getElementById('auth-form');
+        this.emailInput = document.getElementById('auth-email');
+        this.passwordInput = document.getElementById('auth-password');
+        this.submitBtn = document.getElementById('auth-submit-btn');
+        
+        this.switchBtn = document.getElementById('auth-switch-btn');
+        this.switchText = document.getElementById('auth-switch-text');
+        this.title = document.getElementById('auth-title');
+        
+        this.gameMain = document.getElementById('game-main');
+        this.gameOverlayBtn = document.getElementById('overlay-login-btn');
+
+        this.isLoginMode = true;
+        this.currentUser = null;
+
+        this.init();
+    }
+
+    init() {
+        // UI Event Listeners
+        this.loginBtn.addEventListener('click', () => this.showModal());
+        this.gameOverlayBtn.addEventListener('click', () => this.showModal());
+        this.logoutBtn.addEventListener('click', () => this.logout());
+        this.closeBtn.addEventListener('click', () => this.hideModal());
+        this.overlay.addEventListener('click', () => this.hideModal());
+        this.switchBtn.addEventListener('click', (e) => this.toggleMode(e));
+        this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+
+        // Auth State Listener
+        onAuthStateChanged(auth, (user) => {
+            this.currentUser = user;
+            if (user) {
+                this.handleLoginSuccess(user);
+            } else {
+                this.handleLogoutSuccess();
+            }
+        });
+    }
+
+    showModal() {
+        this.modal.classList.remove('hidden');
+        this.overlay.classList.remove('hidden');
+    }
+
+    hideModal() {
+        this.modal.classList.add('hidden');
+        this.overlay.classList.add('hidden');
+        this.form.reset();
+    }
+
+    toggleMode(e) {
+        e.preventDefault();
+        this.isLoginMode = !this.isLoginMode;
+        
+        if (this.isLoginMode) {
+            this.title.textContent = "로그인";
+            this.submitBtn.textContent = "로그인";
+            this.switchText.textContent = "계정이 없으신가요?";
+            this.switchBtn.textContent = "회원가입";
+        } else {
+            this.title.textContent = "회원가입";
+            this.submitBtn.textContent = "회원가입";
+            this.switchText.textContent = "이미 계정이 있으신가요?";
+            this.switchBtn.textContent = "로그인";
+        }
+    }
+
+    async handleSubmit(e) {
+        e.preventDefault();
+        const email = this.emailInput.value;
+        const password = this.passwordInput.value;
+
+        try {
+            if (this.isLoginMode) {
+                await signInWithEmailAndPassword(auth, email, password);
+            } else {
+                await createUserWithEmailAndPassword(auth, email, password);
+            }
+            this.hideModal();
+        } catch (error) {
+            alert("오류 발생: " + error.message);
+        }
+    }
+
+    logout() {
+        signOut(auth);
+    }
+
+    handleLoginSuccess(user) {
+        this.loginBtn.style.display = 'none';
+        this.logoutBtn.style.display = 'block';
+        this.userDisplay.style.display = 'block';
+        this.userDisplay.textContent = user.email.split('@')[0]; // Show username
+        
+        // Unblock Game
+        this.gameMain.classList.remove('blocked');
+        
+        // Update Chat ID
+        if (window.chatManager) {
+            window.chatManager.userId = user.email.split('@')[0];
+        }
+    }
+
+    handleLogoutSuccess() {
+        this.loginBtn.style.display = 'block';
+        this.logoutBtn.style.display = 'none';
+        this.userDisplay.style.display = 'none';
+        
+        // Block Game
+        this.gameMain.classList.add('blocked');
+    }
+}
+
 class ChatManager {
     constructor() {
         this.messagesElement = document.getElementById('chat-messages');
         this.formElement = document.getElementById('chat-form');
         this.inputElement = document.getElementById('chat-input');
         
-        // Simple user ID for this session to distinguish "my" messages
-        this.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        // Default guest ID, will be updated by AuthManager
+        this.userId = 'Guest_' + Math.random().toString(36).substr(2, 5);
+        
+        // Expose to window for AuthManager
+        window.chatManager = this;
         
         this.init();
     }
 
     init() {
         try {
-            const app = initializeApp(firebaseConfig);
-            this.db = getDatabase(app);
-            this.messagesRef = ref(this.db, 'messages');
+            this.messagesRef = ref(db, 'messages');
             
             this.formElement.addEventListener('submit', (e) => this.sendMessage(e));
             this.listenMessages();
         } catch (error) {
-            console.error("Firebase init error:", error);
-            this.appendSystemMessage("채팅 연결 실패. 콘솔에서 Realtime Database를 생성했는지 확인해주세요.");
+            console.error("Chat init error:", error);
+            this.appendSystemMessage("채팅 연결 실패.");
         }
     }
-
+    // ... (rest of ChatManager methods remain mostly same, just removing init logic duplicates)
     sendMessage(e) {
         e.preventDefault();
         const text = this.inputElement.value.trim();
@@ -71,7 +200,17 @@ class ChatManager {
             messageDiv.classList.add('others');
         }
         
-        messageDiv.textContent = data.text;
+        // Add user ID label
+        const idLabel = document.createElement('div');
+        idLabel.style.fontSize = '0.75rem';
+        idLabel.style.marginBottom = '2px';
+        idLabel.style.opacity = '0.7';
+        idLabel.textContent = data.userId;
+        messageDiv.appendChild(idLabel);
+
+        const textNode = document.createTextNode(data.text);
+        messageDiv.appendChild(textNode);
+        
         this.messagesElement.appendChild(messageDiv);
         this.scrollToBottom();
     }
@@ -89,7 +228,95 @@ class ChatManager {
     }
 }
 
+class RankingManager {
+    constructor() {
+        this.modal = document.getElementById('ranking-modal');
+        this.overlay = document.getElementById('modal-overlay');
+        this.openBtn = document.getElementById('ranking-btn');
+        this.closeBtn = document.getElementById('ranking-close-btn');
+        this.listContainer = document.getElementById('ranking-list');
+        this.tabs = document.querySelectorAll('.tab-btn');
+        
+        this.currentDiff = 'medium';
+
+        this.init();
+    }
+
+    init() {
+        this.openBtn.addEventListener('click', () => this.showRanking());
+        this.closeBtn.addEventListener('click', () => this.hideRanking());
+        
+        this.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.currentDiff = tab.dataset.diff;
+                this.loadRanking();
+            });
+        });
+    }
+
+    showRanking() {
+        this.modal.classList.remove('hidden');
+        this.overlay.classList.remove('hidden');
+        this.loadRanking();
+    }
+
+    hideRanking() {
+        this.modal.classList.add('hidden');
+        this.overlay.classList.add('hidden');
+    }
+
+    async loadRanking() {
+        this.listContainer.innerHTML = '<div class="ranking-loading">로딩중...</div>';
+        
+        try {
+            const scoresRef = ref(db, `scores/${this.currentDiff}`);
+            const q = query(scoresRef, orderByChild('time'), limitToFirst(20));
+            const snapshot = await get(q);
+
+            this.listContainer.innerHTML = '';
+            
+            if (!snapshot.exists()) {
+                this.listContainer.innerHTML = '<div class="ranking-item" style="justify-content:center;">기록이 없습니다.</div>';
+                return;
+            }
+
+            let rank = 1;
+            const scores = [];
+            snapshot.forEach(child => {
+                scores.push(child.val());
+            });
+
+            // Firebase returns ascending by default, which is correct for time (lower is better)
+            scores.forEach(score => {
+                const item = document.createElement('div');
+                item.className = 'ranking-item';
+                
+                // Format time
+                const min = Math.floor(score.time / 60);
+                const sec = score.time % 60;
+                const timeStr = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                
+                const name = score.email ? score.email.split('@')[0] : 'Unknown';
+
+                item.innerHTML = `
+                    <span class="ranking-rank">#${rank++}</span>
+                    <span class="ranking-user">${name}</span>
+                    <span class="ranking-time">${timeStr}</span>
+                `;
+                this.listContainer.appendChild(item);
+            });
+
+        } catch (error) {
+            console.error("Ranking error:", error);
+            this.listContainer.innerHTML = '<div class="ranking-item">랭킹 로드 실패</div>';
+        }
+    }
+}
+
 class SudokuGenerator {
+    // ... (keep existing generator code)
     constructor() {
         this.grid = Array.from({ length: 9 }, () => Array(9).fill(0));
     }
@@ -235,16 +462,21 @@ class SudokuUI {
         this.init();
     }
 
+    // ... (keep init, startNewGame, startTimer, stopTimer, updateTimerDisplay, updateMistakesDisplay, renderBoard, selectCell, handleNumpad, handleKeydown, moveSelection, updateCell, gameOver, shakeElement methods)
     init() {
         this.newGameBtn.addEventListener('click', () => this.startNewGame());
         this.difficultySelect.addEventListener('change', () => this.startNewGame());
         this.numpadElement.addEventListener('click', (e) => this.handleNumpad(e));
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
         
-        this.startNewGame();
+        // Wait for auth to enable game
+        // this.startNewGame(); // Removed auto-start, AuthManager handles unblocking
     }
 
     startNewGame() {
+        // Only allow if logged in (double check, though UI is blocked)
+        if (!auth.currentUser) return;
+
         const difficulty = this.difficultySelect.value;
         const generator = new SudokuGenerator();
         const { solution, puzzle } = generator.generate(difficulty);
@@ -486,11 +718,26 @@ class SudokuUI {
             this.statusMessage.textContent = `축하합니다! ${this.timerElement.textContent} 만에 퍼즐을 완성했습니다! 🎉`;
             this.statusMessage.style.color = '#27ae60';
             this.statusMessage.style.fontWeight = 'bold';
+            
+            // Save Score
+            if (auth.currentUser) {
+                const diff = this.difficultySelect.value;
+                const scoresRef = ref(db, `scores/${diff}`);
+                push(scoresRef, {
+                    userId: auth.currentUser.uid,
+                    email: auth.currentUser.email,
+                    time: this.timerSeconds,
+                    timestamp: serverTimestamp()
+                }).then(() => {
+                    this.statusMessage.textContent += " (랭킹 등록됨)";
+                });
+            }
         }
     }
 }
 
-// Initialize the game
+// Initialize Apps
 new SudokuUI();
-// Initialize Chat
 new ChatManager();
+new AuthManager();
+new RankingManager();
