@@ -1,9 +1,7 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // ⚠️ 중요: 이곳에 당신의 Firebase 프로젝트 설정을 입력해야 채팅이 작동합니다!
-// Firebase 콘솔 -> 프로젝트 설정 -> 내 앱 -> SDK 설정 및 구성에서 복사하세요.
 const firebaseConfig = {
     apiKey: "AIzaSyDr_uKuTvWZmzZ6OgzOzaWAyuXXqB8JUoc",
     authDomain: "dongukwebtest.firebaseapp.com",
@@ -223,7 +221,7 @@ class SudokuUI {
         this.timerElement = document.getElementById('timer');
         this.mistakesElement = document.getElementById('mistakes');
         
-        this.selectedCell = null; // {row, col, element}
+        this.selectedCell = null;
         this.solution = [];
         this.currentBoard = [];
         this.initialBoard = [];
@@ -297,88 +295,6 @@ class SudokuUI {
 
     renderBoard() {
         this.boardElement.innerHTML = '';
-        // ... (rest of renderBoard implementation remains implicitly same, this replace handles the logic flow)
-        for (let i = 0; i < 9; i++) {
-            for (let j = 0; j < 9; j++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell');
-                cell.dataset.row = i;
-                cell.dataset.col = j;
-                
-                const value = this.currentBoard[i][j];
-                if (value !== 0) {
-                    cell.textContent = value;
-                    if (this.initialBoard[i][j] !== 0) {
-                        cell.classList.add('fixed');
-                    } else {
-                        cell.classList.add('editable');
-                    }
-                }
-
-                cell.addEventListener('click', () => this.selectCell(cell, i, j));
-                this.boardElement.appendChild(cell);
-            }
-        }
-    }
-
-    // ... (selectCell remains same)
-
-    handleNumpad(e) {
-        if (this.isGameOver) return;
-        if (!e.target.classList.contains('num-btn')) return;
-        // ... (rest of handleNumpad logic)
-        if (!this.selectedCell) {
-            this.statusMessage.textContent = '먼저 셀을 선택해주세요.';
-            this.statusMessage.style.color = '#e74c3c';
-            return;
-        }
-
-        const { row, col, element } = this.selectedCell;
-
-        // Cannot edit fixed cells
-        if (this.initialBoard[row][col] !== 0) {
-            this.shakeElement(element);
-            return;
-        }
-
-        const action = e.target.dataset.action;
-        const num = action === 'erase' ? 0 : parseInt(e.target.dataset.num);
-
-        this.updateCell(row, col, num);
-    }
-
-    handleKeydown(e) {
-        if (this.isGameOver) return;
-        if (!this.selectedCell) return;
-        // ... (rest of handleKeydown logic)
-        const key = e.key;
-        const { row, col, element } = this.selectedCell;
-
-        // Navigation
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-            e.preventDefault();
-            this.moveSelection(key);
-            return;
-        }
-
-        // Editing
-        if (this.initialBoard[row][col] !== 0) return;
-
-        if (key >= '1' && key <= '9') {
-            this.updateCell(row, col, parseInt(key));
-        } else if (key === 'Backspace' || key === 'Delete') {
-            this.updateCell(row, col, 0);
-        }
-    }
-    
-    // ... (moveSelection remains same)
-    
-    // Explicitly including renderBoard and selectCell etc is messy in replace block without full file.
-    // I will replace methods individually to be safe and clean.
-
-
-    renderBoard() {
-        this.boardElement.innerHTML = '';
         
         for (let i = 0; i < 9; i++) {
             for (let j = 0; j < 9; j++) {
@@ -404,7 +320,6 @@ class SudokuUI {
     }
 
     selectCell(cell, row, col) {
-        // Clear previous selection
         document.querySelectorAll('.cell.selected').forEach(el => el.classList.remove('selected'));
         document.querySelectorAll('.cell.highlighted').forEach(el => el.classList.remove('highlighted'));
         document.querySelectorAll('.cell.same-number').forEach(el => el.classList.remove('same-number'));
@@ -417,13 +332,11 @@ class SudokuUI {
         this.selectedCell = { row, col, element: cell };
         cell.classList.add('selected');
 
-        // Highlight row, col, box
         const cells = document.querySelectorAll('.cell');
         cells.forEach(el => {
             const r = parseInt(el.dataset.row);
             const c = parseInt(el.dataset.col);
             
-            // Box calculation
             const boxStartRow = Math.floor(row / 3) * 3;
             const boxStartCol = Math.floor(col / 3) * 3;
             const inBox = (r >= boxStartRow && r < boxStartRow + 3) && (c >= boxStartCol && c < boxStartCol + 3);
@@ -432,7 +345,6 @@ class SudokuUI {
                 if (el !== cell) el.classList.add('highlighted');
             }
 
-            // Highlight same numbers
             const val = this.currentBoard[row][col];
             if (val !== 0 && this.currentBoard[r][c] === val) {
                 el.classList.add('same-number');
@@ -451,7 +363,6 @@ class SudokuUI {
 
         const { row, col, element } = this.selectedCell;
 
-        // Cannot edit fixed cells
         if (this.initialBoard[row][col] !== 0) {
             this.shakeElement(element);
             return;
@@ -470,14 +381,12 @@ class SudokuUI {
         const key = e.key;
         const { row, col, element } = this.selectedCell;
 
-        // Navigation
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             e.preventDefault();
             this.moveSelection(key);
             return;
         }
 
-        // Editing
         if (this.initialBoard[row][col] !== 0) return;
 
         if (key >= '1' && key <= '9') {
@@ -505,10 +414,9 @@ class SudokuUI {
         const cell = this.selectedCell.element;
         
         cell.textContent = num === 0 ? '' : num;
-        cell.className = 'cell selected editable'; // Reset classes, keep selection
+        cell.className = 'cell selected editable'; 
 
         if (num !== 0) {
-            // Check for errors
             if (num !== this.solution[row][col]) {
                 cell.classList.add('error');
                 this.mistakes++;
@@ -518,12 +426,10 @@ class SudokuUI {
                     this.gameOver();
                 }
             } else {
-                // Check win condition
                 this.checkWin();
             }
         }
         
-        // Re-apply highlighting to show same numbers
         this.selectCell(cell, row, col);
     }
 
@@ -534,17 +440,15 @@ class SudokuUI {
         this.statusMessage.style.color = '#e74c3c';
         this.statusMessage.style.fontWeight = 'bold';
         
-        // Disable board interaction visually
         this.boardElement.style.opacity = '0.7';
         this.boardElement.style.pointerEvents = 'none';
     }
 
     shakeElement(element) {
         element.style.animation = 'none';
-        element.offsetHeight; /* trigger reflow */
+        element.offsetHeight; 
         element.style.animation = 'shake 0.3s';
         
-        // Add keyframe if not exists (simple inline way)
         if (!document.getElementById('shake-style')) {
             const style = document.createElement('style');
             style.id = 'shake-style';
@@ -582,7 +486,6 @@ class SudokuUI {
             this.statusMessage.textContent = `축하합니다! ${this.timerElement.textContent} 만에 퍼즐을 완성했습니다! 🎉`;
             this.statusMessage.style.color = '#27ae60';
             this.statusMessage.style.fontWeight = 'bold';
-            // Confetti effect could go here
         }
     }
 }
