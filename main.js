@@ -722,20 +722,31 @@ class SudokuUI {
             // Save Score
             if (auth.currentUser) {
                 const diff = this.difficultySelect.value;
-                console.log(`Saving score for user: ${auth.currentUser.email}, Difficulty: ${diff}`); // Debug log
+                const user = auth.currentUser;
+                console.log(`Checking score for user: ${user.email}, Difficulty: ${diff}`);
 
-                const scoresRef = ref(db, `scores/${diff}`);
-                push(scoresRef, {
-                    userId: auth.currentUser.uid,
-                    email: auth.currentUser.email,
-                    time: this.timerSeconds,
-                    timestamp: serverTimestamp()
-                }).then(() => {
-                    this.statusMessage.textContent += " (랭킹 등록됨)";
-                    console.log("Score saved successfully!");
+                const userScoreRef = ref(db, `scores/${diff}/${user.uid}`);
+
+                get(userScoreRef).then((snapshot) => {
+                    const existingScore = snapshot.val();
+                    if (!existingScore || this.timerSeconds < existingScore.time) {
+                        console.log(`New best time! Saving score.`);
+                        set(userScoreRef, {
+                            email: user.email,
+                            time: this.timerSeconds,
+                            timestamp: serverTimestamp()
+                        }).then(() => {
+                            this.statusMessage.textContent += " (랭킹 등록됨)";
+                            console.log("Score saved successfully!");
+                        }).catch((error) => {
+                            console.error("Score save failed:", error);
+                            alert("랭킹 등록 실패: " + error.message);
+                        });
+                    } else {
+                        console.log("Did not beat existing best time.");
+                    }
                 }).catch((error) => {
-                    console.error("Score save failed:", error);
-                    alert("랭킹 등록 실패: " + error.message);
+                    console.error("Error fetching existing score:", error);
                 });
             } else {
                 console.warn("No current user found, skipping score save.");
