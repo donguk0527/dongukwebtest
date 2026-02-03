@@ -272,7 +272,7 @@ class RankingManager {
         
         try {
             const scoresRef = ref(db, `scores/${this.currentDiff}`);
-            const q = query(scoresRef, orderByChild('time'), limitToFirst(20));
+            const q = query(scoresRef, orderByChild('time'), limitToFirst(100));
             const snapshot = await get(q);
 
             this.listContainer.innerHTML = '';
@@ -697,6 +697,29 @@ class SudokuUI {
         }
     }
 
+    async displayUserRank(difficulty, userId) {
+        try {
+            const scoresRef = ref(db, `scores/${difficulty}`);
+            const q = query(scoresRef, orderByChild('time'));
+            const snapshot = await get(q);
+
+            if (snapshot.exists()) {
+                const scores = [];
+                snapshot.forEach(child => {
+                    scores.push({ uid: child.key, ...child.val() });
+                });
+
+                const userRank = scores.findIndex(score => score.uid === userId) + 1;
+
+                if (userRank > 0) {
+                    this.statusMessage.textContent += ` (전체 랭킹: ${userRank}위)`;
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching scores for rank display:", error);
+        }
+    }
+
     checkWin() {
         let isFull = true;
         let isCorrect = true;
@@ -729,24 +752,29 @@ class SudokuUI {
 
                 get(userScoreRef).then((snapshot) => {
                     const existingScore = snapshot.val();
-                    if (!existingScore || this.timerSeconds < existingScore.time) {
-                        console.log(`New best time! Saving score.`);
+                    const currentTime = this.timerSeconds;
+                    if (!existingScore || currentTime < existingScore.time) {
+                        console.log(`New best time! Saving score: ${currentTime}`);
                         set(userScoreRef, {
                             email: user.email,
-                            time: this.timerSeconds,
+                            time: currentTime,
                             timestamp: serverTimestamp()
                         }).then(() => {
-                            this.statusMessage.textContent += " (랭킹 등록됨)";
+                            this.statusMessage.textContent += " (신기록! 랭킹 등록됨)";
                             console.log("Score saved successfully!");
+                            this.displayUserRank(diff, user.uid);
                         }).catch((error) => {
                             console.error("Score save failed:", error);
                             alert("랭킹 등록 실패: " + error.message);
                         });
                     } else {
-                        console.log("Did not beat existing best time.");
+                        console.log(`Did not beat existing best time of ${existingScore.time}. Current time: ${currentTime}`);
+                        this.statusMessage.textContent += ` (기존 기록보다 느려서 갱신되지 않음)`;
+                        this.displayUserRank(diff, user.uid);
                     }
                 }).catch((error) => {
                     console.error("Error fetching existing score:", error);
+                    alert("랭킹 정보 조회 실패: " + error.message);
                 });
             } else {
                 console.warn("No current user found, skipping score save.");
